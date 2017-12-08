@@ -7,7 +7,7 @@
  */
 
 #define LOG_TAG "RILClient"
-#define LOG_NDEBUG 0
+/*#define LOG_NDEBUG 0*/
 
 #include <binder/Parcel.h>
 #include <telephony/ril.h>
@@ -33,13 +33,10 @@ namespace android {
 //---------------------------------------------------------------------------
 // Defines
 //---------------------------------------------------------------------------
-#define DBG 1
 #define RILD_PORT               7777
 #define MULTI_CLIENT_SOCKET_NAME "Multiclient"
 #define MULTI_CLIENT_Q_SOCKET_NAME "QMulticlient"
-#if defined(SEC_PRODUCT_FEATURE_RIL_CALL_DUALMODE_CDMAGSM)
 #define MULTI_CLIENT_SOCKET_NAME_2 "Multiclient2"
-#endif
 
 #define MAX_COMMAND_BYTES       (8 * 1024)
 #define REQ_POOL_SIZE           32
@@ -85,7 +82,7 @@ namespace android {
 #define OEM_SND_TYPE_BTVOICE        0x41 // BT(0x40) + Voice(0x01)
 
 #ifdef SAMSUNG_NEXT_GEN_MODEM
-#define OEM_SND_AUDIO_PATH_HANDSET            0x01
+#define OEM_SND_AUDIO_PATH_EARPIECE           0x01
 #define OEM_SND_AUDIO_PATH_HEADSET            0x02
 #define OEM_SND_AUDIO_PATH_HFK                0x06
 #define OEM_SND_AUDIO_PATH_BLUETOOTH          0x04
@@ -98,7 +95,7 @@ namespace android {
 #define OEM_SND_AUDIO_PATH_BT_WB              0x0C
 #define OEM_SND_AUDIO_PATH_BT_WB_NSEC_OFF     0x0D
 #else
-#define OEM_SND_AUDIO_PATH_HANDSET      0x01
+#define OEM_SND_AUDIO_PATH_EARPIECE     0x01
 #define OEM_SND_AUDIO_PATH_HEADSET      0x02
 #define OEM_SND_AUDIO_PATH_HFK                0x03
 #define OEM_SND_AUDIO_PATH_BLUETOOTH    0x04
@@ -355,7 +352,7 @@ int Connect_RILD(HRilClient client) {
     RilClientPrv *client_prv;
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -366,7 +363,7 @@ int Connect_RILD(HRilClient client) {
     client_prv->sock = socket_local_client(MULTI_CLIENT_SOCKET_NAME, ANDROID_SOCKET_NAMESPACE_ABSTRACT, SOCK_STREAM );
 
     if (client_prv->sock < 0) {
-        ALOGE("%s: Connecting failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
+        RLOGE("%s: Connecting failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
@@ -381,7 +378,7 @@ int Connect_RILD(HRilClient client) {
 
     if (pipe(client_prv->pipefd) < 0) {
         close(client_prv->sock);
-        ALOGE("%s: Creating command pipe failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
+        RLOGE("%s: Creating command pipe failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
         return RIL_CLIENT_ERR_IO;
     }
 
@@ -400,7 +397,7 @@ int Connect_RILD(HRilClient client) {
 
         memset(client_prv, 0, sizeof(RilClientPrv));
         client_prv->sock = -1;
-        ALOGE("%s: Can't create Reader thread. %s(%d)", __FUNCTION__, strerror(errno), errno);
+        RLOGE("%s: Can't create Reader thread. %s(%d)", __FUNCTION__, strerror(errno), errno);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
@@ -419,7 +416,7 @@ int Connect_QRILD(HRilClient client) {
     RilClientPrv *client_prv;
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -430,7 +427,7 @@ int Connect_QRILD(HRilClient client) {
     client_prv->sock = socket_local_client(MULTI_CLIENT_Q_SOCKET_NAME, ANDROID_SOCKET_NAMESPACE_ABSTRACT, SOCK_STREAM );
 
     if (client_prv->sock < 0) {
-        ALOGE("%s: Connecting failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
+        RLOGE("%s: Connecting failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
@@ -445,7 +442,7 @@ int Connect_QRILD(HRilClient client) {
 
     if (pipe(client_prv->pipefd) < 0) {
         close(client_prv->sock);
-        ALOGE("%s: Creating command pipe failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
+        RLOGE("%s: Creating command pipe failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
         return RIL_CLIENT_ERR_IO;
     }
 
@@ -464,14 +461,13 @@ int Connect_QRILD(HRilClient client) {
 
         memset(client_prv, 0, sizeof(RilClientPrv));
         client_prv->sock = -1;
-        ALOGE("%s: Can't create Reader thread. %s(%d)", __FUNCTION__, strerror(errno), errno);
+        RLOGE("%s: Can't create Reader thread. %s(%d)", __FUNCTION__, strerror(errno), errno);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
     return RIL_CLIENT_ERR_SUCCESS;
 }
 
-#if defined(SEC_PRODUCT_FEATURE_RIL_CALL_DUALMODE_CDMAGSM)    // mook_120209 Enable multiclient
 /**
  * @fn    int Connect_RILD_Second(void)
  *
@@ -484,7 +480,7 @@ int Connect_RILD_Second(HRilClient client)    {
     RilClientPrv *client_prv;
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -495,7 +491,7 @@ int Connect_RILD_Second(HRilClient client)    {
     client_prv->sock = socket_local_client(MULTI_CLIENT_SOCKET_NAME_2, ANDROID_SOCKET_NAMESPACE_ABSTRACT, SOCK_STREAM );
 
     if (client_prv->sock < 0) {
-        ALOGE("%s: Connecting failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
+        RLOGE("%s: Connecting failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
@@ -510,7 +506,7 @@ int Connect_RILD_Second(HRilClient client)    {
 
     if (pipe(client_prv->pipefd) < 0) {
         close(client_prv->sock);
-        ALOGE("%s: Creating command pipe failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
+        RLOGE("%s: Creating command pipe failed. %s(%d)", __FUNCTION__, strerror(errno), errno);
         return RIL_CLIENT_ERR_IO;
     }
 
@@ -529,13 +525,12 @@ int Connect_RILD_Second(HRilClient client)    {
 
         memset(client_prv, 0, sizeof(RilClientPrv));
         client_prv->sock = -1;
-        ALOGE("%s: Can't create Reader thread. %s(%d)", __FUNCTION__, strerror(errno), errno);
+        RLOGE("%s: Can't create Reader thread. %s(%d)", __FUNCTION__, strerror(errno), errno);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
     return RIL_CLIENT_ERR_SUCCESS;
 }
-#endif
 
 /**
  * @fn  int isConnected_RILD(HRilClient client)
@@ -549,7 +544,7 @@ int isConnected_RILD(HRilClient client) {
     RilClientPrv *client_prv;
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -571,7 +566,7 @@ int Disconnect_RILD(HRilClient client) {
     int ret = 0;
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -606,7 +601,7 @@ int Disconnect_RILD(HRilClient client) {
 extern "C"
 int CloseClient_RILD(HRilClient client) {
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -629,19 +624,19 @@ int SetCallVolume(HRilClient client, SoundType type, int vol_level) {
     char data[6] = {0,};
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
     if (isValidSoundType(type) == false) {
-        ALOGE("%s: Invalid sound type", __FUNCTION__);
+        RLOGE("%s: Invalid sound type", __FUNCTION__);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -679,19 +674,19 @@ int SetCallAudioPath(HRilClient client, AudioPath path)
     char data[6] = {0,};
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
     if (isValidAudioPath(path) == false) {
-        ALOGE("%s: Invalid audio path", __FUNCTION__);
+        RLOGE("%s: Invalid audio path", __FUNCTION__);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -726,19 +721,19 @@ int SetCallClockSync(HRilClient client, SoundClockCondition condition) {
     char data[5] = {0,};
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
     if (isValidSoundClockCondition(condition) == false) {
-        ALOGE("%s: Invalid sound clock condition", __FUNCTION__);
+        RLOGE("%s: Invalid sound clock condition", __FUNCTION__);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -769,19 +764,19 @@ int SetVideoCallClockSync(HRilClient client, SoundClockCondition condition) {
     char data[5] = {0,};
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
     if (isValidSoundClockCondition(condition) == false) {
-        ALOGE("%s: Invalid sound clock condition", __FUNCTION__);
+        RLOGE("%s: Invalid sound clock condition", __FUNCTION__);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -812,19 +807,19 @@ int SetCallRecord(HRilClient client, CallRecCondition condition) {
     char data[5] = {0,};
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
     if (isValidCallRecCondition(condition) == false) {
-        ALOGE("%s: Invalid sound clock condition", __FUNCTION__);
+        RLOGE("%s: Invalid sound clock condition", __FUNCTION__);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -855,19 +850,19 @@ int SetMute(HRilClient client, MuteCondition condition) {
     char data[5] = {0,};
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
     if (isValidMuteCondition(condition) == false) {
-        ALOGE("%s: Invalid sound clock condition", __FUNCTION__);
+        RLOGE("%s: Invalid sound clock condition", __FUNCTION__);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -898,14 +893,14 @@ int GetMute(HRilClient client, RilOnComplete handler) {
     char data[4] = {0,};
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
@@ -933,22 +928,22 @@ int SetTwoMicControl(HRilClient client, TwoMicSolDevice device, TwoMicSolReport 
     int ret;
     char data[6] = {0,};
 
-    ALOGE(" + %s", __FUNCTION__);
+    RLOGV(" + %s", __FUNCTION__);
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
     if (isValidTwoMicCtrl(device, report) == false) {
-        ALOGE("%s: Invalid sound set two params", __FUNCTION__);
+        RLOGE("%s: Invalid sound set two params", __FUNCTION__);
         return RIL_CLIENT_ERR_INVAL;
     }
 
@@ -967,7 +962,7 @@ int SetTwoMicControl(HRilClient client, TwoMicSolDevice device, TwoMicSolReport 
         RegisterRequestCompleteHandler(client, REQ_SET_TWO_MIC_CTRL, NULL);
     }
 
-    ALOGE(" - %s", __FUNCTION__);
+    RLOGV(" - %s", __FUNCTION__);
 
     return ret;
 }
@@ -980,18 +975,18 @@ int SetDhaSolution(HRilClient client, DhaSolMode mode, DhaSolSelect select, char
     char tempPara[24]={0,};
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
-    ALOGE("%s: DHA mode=%d, select=%d", __FUNCTION__,mode, select);
+    RLOGE("%s: DHA mode=%d, select=%d", __FUNCTION__,mode, select);
 
     // Make raw data
     data[0] = OEM_FUNC_SOUND;
@@ -1025,14 +1020,14 @@ int SetLoopbackTest(HRilClient client, LoopbackMode mode, AudioPath path) {
     char data[6] = {0,};
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
@@ -1070,14 +1065,14 @@ int InvokeOemRequestHookRaw(HRilClient client, char *data, size_t len) {
     RilClientPrv *client_prv;
 
     if (client == NULL || client->prv == NULL) {
-        ALOGE("%s: Invalid client %p", __FUNCTION__, client);
+        RLOGE("%s: Invalid client %p", __FUNCTION__, client);
         return RIL_CLIENT_ERR_INVAL;
     }
 
     client_prv = (RilClientPrv *)(client->prv);
 
     if (client_prv->sock < 0 ) {
-        ALOGE("%s: Not connected.", __FUNCTION__);
+        RLOGE("%s: Not connected.", __FUNCTION__);
         return RIL_CLIENT_ERR_CONNECT;
     }
 
@@ -1093,12 +1088,14 @@ static int SendOemRequestHookRaw(HRilClient client, int req_id, char *data, size
     RilClientPrv *client_prv;
     int maxfd = -1;
 
+    unsigned int check_req_id = req_id;
+
     client_prv = (RilClientPrv *)(client->prv);
 
     // Allocate a token.
     token = AllocateToken(&(client_prv->token_pool));
     if (token == 0) {
-        ALOGE("%s: No token.", __FUNCTION__);
+        RLOGE("%s: No token.", __FUNCTION__);
         return RIL_CLIENT_ERR_AGAIN;
     }
 
@@ -1116,19 +1113,26 @@ static int SendOemRequestHookRaw(HRilClient client, int req_id, char *data, size
     // DO TX: header(size).
     header = htonl(p.dataSize());
 
-    if (DBG) ALOGD("%s(): token = %d\n", __FUNCTION__, token);
+    RLOGV("%s(): token = %d\n", __FUNCTION__, token);
 
     ret = blockingWrite(client_prv->sock, (void *)&header, sizeof(header));
     if (ret < 0) {
-        ALOGE("%s: send request header failed. (%d)", __FUNCTION__, ret);
+        RLOGE("%s: send request header failed. (%d)", __FUNCTION__, ret);
         goto error;
     }
 
     // Do TX: response data.
     ret = blockingWrite(client_prv->sock, p.data(), p.dataSize());
     if (ret < 0) {
-        ALOGE("%s: send request data failed. (%d)", __FUNCTION__, ret);
+        RLOGE("%s: send request data failed. (%d)", __FUNCTION__, ret);
         goto error;
+    }
+
+    // check if the handler for specified event is NULL and deregister token
+    // to prevent token pool overflow
+    if(!FindReqHandler(client_prv, token, &check_req_id)) {
+        FreeToken(&(client_prv->token_pool), token);
+        ClearReqHistory(client_prv, token);
     }
 
     return RIL_CLIENT_ERR_SUCCESS;
@@ -1136,6 +1140,12 @@ static int SendOemRequestHookRaw(HRilClient client, int req_id, char *data, size
 error:
     FreeToken(&(client_prv->token_pool), token);
     ClearReqHistory(client_prv, token);
+
+    if (ret == -EPIPE || ret == -EBADFD) {
+        close(client_prv->sock);
+        client_prv->sock = -1;
+        client_prv->b_connect = 0;
+    }
 
     return RIL_CLIENT_ERR_UNKNOWN;
 }
@@ -1147,7 +1157,7 @@ static bool isValidSoundType(SoundType type) {
 
 
 static bool isValidAudioPath(AudioPath path) {
-    return (path >= SOUND_AUDIO_PATH_HANDSET && path <= OEM_SND_AUDIO_PATH_BT_WB_NSEC_OFF);
+    return (path >= SOUND_AUDIO_PATH_EARPIECE && path <= OEM_SND_AUDIO_PATH_BT_WB_NSEC_OFF);
 }
 
 
@@ -1186,8 +1196,8 @@ static char ConvertSoundType(SoundType type) {
 
 static char ConvertAudioPath(AudioPath path) {
     switch (path) {
-        case SOUND_AUDIO_PATH_HANDSET:
-            return OEM_SND_AUDIO_PATH_HANDSET;
+        case SOUND_AUDIO_PATH_EARPIECE:
+            return OEM_SND_AUDIO_PATH_EARPIECE;
         case SOUND_AUDIO_PATH_HEADSET:
             return OEM_SND_AUDIO_PATH_HEADSET;
         case SOUND_AUDIO_PATH_SPEAKER:
@@ -1210,7 +1220,7 @@ static char ConvertAudioPath(AudioPath path) {
             return OEM_SND_AUDIO_PATH_BT_WB_NSEC_OFF;
 
         default:
-            return OEM_SND_AUDIO_PATH_HANDSET;
+            return OEM_SND_AUDIO_PATH_EARPIECE;
     }
 }
 
@@ -1236,7 +1246,7 @@ static void * RxReaderFunc(void *param) {
         FD_SET(client_prv->sock, &(client_prv->sock_rfds));
         FD_SET(client_prv->pipefd[0], &(client_prv->sock_rfds));
 
-        if (DBG) ALOGD("[*] %s() b_connect=%d\n", __FUNCTION__, client_prv->b_connect);
+        RLOGV("[*] %s() b_connect=%d\n", __FUNCTION__, client_prv->b_connect);
         if (select(maxfd, &(client_prv->sock_rfds), NULL, NULL, NULL) > 0) {
             if (FD_ISSET(client_prv->sock, &(client_prv->sock_rfds))) {
                 // Read incoming data
@@ -1252,7 +1262,7 @@ static void * RxReaderFunc(void *param) {
                     else if (ret == 0) {    // && p_record != NULL
                         n = processRxBuffer(client_prv, p_record, recordlen);
                         if (n != RIL_CLIENT_ERR_SUCCESS) {
-                            ALOGE("%s: processRXBuffer returns %d", __FUNCTION__, n);
+                            RLOGE("%s: processRXBuffer returns %d", __FUNCTION__, n);
                         }
                     }
                     else {
@@ -1283,7 +1293,7 @@ static void * RxReaderFunc(void *param) {
             if (FD_ISSET(client_prv->pipefd[0], &(client_prv->sock_rfds))) {
                 char end_cmd[10];
 
-                if (DBG) ALOGD("%s(): close\n", __FUNCTION__);
+                RLOGV("%s(): close\n", __FUNCTION__);
 
                 if (read(client_prv->pipefd[0], end_cmd, sizeof(end_cmd)) > 0) {
                     close(client_prv->sock);
@@ -1293,6 +1303,23 @@ static void * RxReaderFunc(void *param) {
                     client_prv->sock = -1;
                     client_prv->b_connect = 0;
                 }
+            }
+        } else {
+            RLOGE("%s: select() returned %d\n", __FUNCTION__, -errno);
+
+            if (client_prv->sock > 0) {
+                close(client_prv->sock);
+                client_prv->sock = -1;
+                client_prv->b_connect = 0;
+            }
+
+            if (client_prv->p_rs)
+                record_stream_free(client_prv->p_rs);
+
+            // EOS
+            if (client_prv->err_cb) {
+                client_prv->err_cb(client_prv->err_cb_data, RIL_CLIENT_ERR_CONNECT);
+                return NULL;
             }
         }
     }
@@ -1309,17 +1336,17 @@ static int processUnsolicited(RilClientPrv *prv, Parcel &p) {
 
     status = p.readInt32(&resp_id);
     if (status != NO_ERROR) {
-        ALOGE("%s: read resp_id failed.", __FUNCTION__);
+        RLOGE("%s: read resp_id failed.", __FUNCTION__);
         return RIL_CLIENT_ERR_IO;
     }
 
     status = p.readInt32(&len);
     if (status != NO_ERROR) {
-        //ALOGE("%s: read length failed. assume zero length.", __FUNCTION__);
+        //RLOGE("%s: read length failed. assume zero length.", __FUNCTION__);
         len = 0;
     }
 
-    ALOGD("%s(): resp_id (%d), len(%d)\n", __FUNCTION__, resp_id, len);
+    RLOGD("%s(): resp_id (%d), len(%d)\n", __FUNCTION__, resp_id, len);
 
     if (len)
         data = p.readInplace(len);
@@ -1342,29 +1369,29 @@ static int processSolicited(RilClientPrv *prv, Parcel &p) {
     int ret = RIL_CLIENT_ERR_SUCCESS;
     uint32_t req_id = 0;
 
-    if (DBG) ALOGD("%s()", __FUNCTION__);
+    RLOGV("%s()", __FUNCTION__);
 
     status = p.readInt32(&token);
     if (status != NO_ERROR) {
-        ALOGE("%s: Read token fail. Status %d\n", __FUNCTION__, status);
+        RLOGE("%s: Read token fail. Status %d\n", __FUNCTION__, status);
         return RIL_CLIENT_ERR_IO;
     }
 
     if (IsValidToken(&(prv->token_pool), token) == 0) {
-        ALOGE("%s: Invalid Token", __FUNCTION__);
+        RLOGE("%s: Invalid Token", __FUNCTION__);
         return RIL_CLIENT_ERR_INVAL;    // Invalid token.
     }
 
     status = p.readInt32(&err);
     if (status != NO_ERROR) {
-        ALOGE("%s: Read err fail. Status %d\n", __FUNCTION__, status);
+        RLOGE("%s: Read err fail. Status %d\n", __FUNCTION__, status);
         ret = RIL_CLIENT_ERR_IO;
         goto error;
     }
 
     // Don't go further for error response.
     if (err != RIL_CLIENT_ERR_SUCCESS) {
-        ALOGE("%s: Error %d\n", __FUNCTION__, err);
+        RLOGE("%s: Error %d\n", __FUNCTION__, err);
         if (prv->err_cb)
             prv->err_cb(prv->err_cb_data, err);
         ret = RIL_CLIENT_ERR_SUCCESS;
@@ -1387,7 +1414,7 @@ static int processSolicited(RilClientPrv *prv, Parcel &p) {
     req_func = FindReqHandler(prv, token, &req_id);
     if (req_func)
     {
-        if (DBG) ALOGD("[*] Call handler");
+        RLOGV("[*] Call handler");
         req_func(prv->parent, data, len);
 
         if(prv->b_del_handler) {
@@ -1395,7 +1422,7 @@ static int processSolicited(RilClientPrv *prv, Parcel &p) {
             RegisterRequestCompleteHandler(prv->parent, req_id, NULL);
         }
     } else {
-        if (DBG) ALOGD("%s: No handler for token %d\n", __FUNCTION__, token);
+        RLOGV("%s: No handler for token %d\n", __FUNCTION__, token);
     }
 
 error:
@@ -1416,7 +1443,7 @@ static int processRxBuffer(RilClientPrv *prv, void *buffer, size_t buflen) {
     p.setData((uint8_t *)buffer, buflen);
 
     status = p.readInt32(&response_type);
-    if (DBG) ALOGD("%s: status %d response_type %d", __FUNCTION__, status, response_type);
+    RLOGV("%s: status %d response_type %d", __FUNCTION__, status, response_type);
 
     if (status != NO_ERROR) {
      ret = RIL_CLIENT_ERR_IO;
@@ -1483,19 +1510,19 @@ static uint8_t IsValidToken(uint32_t *token_pool, uint32_t token) {
 static int RecordReqHistory(RilClientPrv *prv, int token, uint32_t id) {
     int i = 0;
 
-    if (DBG) ALOGD("[*] %s(): token(%d), ID(%d)\n", __FUNCTION__, token, id);
+    RLOGV("[*] %s(): token(%d), ID(%d)\n", __FUNCTION__, token, id);
     for (i = 0; i < TOKEN_POOL_SIZE; i++) {
         if (prv->history[i].token == 0) {
             prv->history[i].token = token;
             prv->history[i].id = id;
 
-            if (DBG) ALOGD("[*] %s(): token(%d), ID(%d)\n", __FUNCTION__, token, id);
+            RLOGV("[*] %s(): token(%d), ID(%d)\n", __FUNCTION__, token, id);
 
             return RIL_CLIENT_ERR_SUCCESS;
         }
     }
 
-    ALOGE("%s: No free record for token %d", __FUNCTION__, token);
+    RLOGE("%s: No free record for token %d", __FUNCTION__, token);
 
     return RIL_CLIENT_ERR_RESOURCE;
 }
@@ -1503,7 +1530,7 @@ static int RecordReqHistory(RilClientPrv *prv, int token, uint32_t id) {
 static void ClearReqHistory(RilClientPrv *prv, int token) {
     int i = 0;
 
-    if (DBG) ALOGD("[*] %s(): token(%d)\n", __FUNCTION__, token);
+    RLOGV("[*] %s(): token(%d)\n", __FUNCTION__, token);
     for (i = 0; i < TOKEN_POOL_SIZE; i++) {
         if (prv->history[i].token == token) {
             memset(&(prv->history[i]), 0, sizeof(ReqHistory));
@@ -1530,7 +1557,7 @@ static RilOnComplete FindReqHandler(RilClientPrv *prv, int token, uint32_t *id) 
     int i = 0;
     int j = 0;
 
-    if (DBG) ALOGD("[*] %s(): token(%d)\n", __FUNCTION__, token);
+    RLOGV("[*] %s(): token(%d)\n", __FUNCTION__, token);
 
     // Search request history.
     for (i = 0; i < TOKEN_POOL_SIZE; i++) {
@@ -1576,10 +1603,9 @@ static int blockingWrite(int fd, const void *buffer, size_t len) {
             writeOffset += written;
         }
         else {
-            ALOGE ("RIL Response: unexpected error on write errno:%d", errno);
-            printf("RIL Response: unexpected error on write errno:%d\n", errno);
+            RLOGE ("RIL Response: unexpected error on write errno:%d", errno);
             close(fd);
-            return -1;
+            return -errno;
         }
     }
 

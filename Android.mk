@@ -37,7 +37,10 @@ endif
 
 ifeq ($(BOARD_VENDOR),samsung)
 include $(SAM_ROOT)/AdvancedDisplay/Android.mk
+include $(SAM_ROOT)/audio/Android.mk
+include $(SAM_ROOT)/consumerir/Android.mk
 include $(SAM_ROOT)/dtbhtool/Android.mk
+include $(SAM_ROOT)/fingerprint/Android.mk
 include $(SAM_ROOT)/liblights/Android.mk
 include $(SAM_ROOT)/modemloader/Android.mk
 include $(SAM_ROOT)/power/Android.mk

@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2013 The Android Open Source Project
  * Copyright (C) 2015-2016 The CyanogenMod Project
+ * Copyright (C) 2017 The LineageOS Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +43,13 @@ enum component_mask_t {
     COMPONENT_BACKLIGHT = 0x1,
     COMPONENT_BUTTON_LIGHT = 0x2,
     COMPONENT_LED = 0x4,
+    COMPONENT_BLN = 0x8,
+};
+
+enum light_t {
+    TYPE_BATTERY = 0,
+    TYPE_NOTIFICATION = 1,
+    TYPE_ATTENTION = 2,
 };
 
 // Assume backlight is always supported
@@ -69,6 +77,10 @@ void check_component_support()
         hw_components |= COMPONENT_BUTTON_LIGHT;
     if (access(LED_BLINK_NODE, W_OK) == 0)
         hw_components |= COMPONENT_LED;
+#ifdef LED_BLN_NODE
+    if (access(LED_BLN_NODE, W_OK) == 0)
+        hw_components |= COMPONENT_BLN;
+#endif
 }
 
 void init_g_lock(void)
@@ -92,7 +104,7 @@ static int write_str(char const *path, const char* value)
         return amt == -1 ? -errno : 0;
     } else {
         if (already_warned == 0) {
-            ALOGE("write_str failed to open %s\n", path);
+            ALOGE("write_str failed to open %s", path);
             already_warned = 1;
         }
         return -errno;
@@ -115,13 +127,13 @@ static int set_light_backlight(struct light_device_t *dev __unused,
     int max_brightness = g_backlight.max_brightness;
 
     /*
-     * If our max panel brightness is > 255, apply linear scaling across the
-     * accepted range.
+     * If max panel brightness is not the default (255),
+     * apply linear scaling across the accepted range.
      */
-    if (max_brightness > MAX_INPUT_BRIGHTNESS) {
+    if (max_brightness != MAX_INPUT_BRIGHTNESS) {
         int old_brightness = brightness;
         brightness = brightness * max_brightness / MAX_INPUT_BRIGHTNESS;
-        ALOGV("%s: scaling brightness %d => %d\n", __func__,
+        ALOGV("%s: scaling brightness %d => %d", __func__,
             old_brightness, brightness);
     }
 
@@ -138,12 +150,13 @@ static int set_light_buttons(struct light_device_t* dev __unused,
                              struct light_state_t const* state)
 {
     int err = 0;
-    int on = (state->color & COLOR_MASK);
-
     pthread_mutex_lock(&g_lock);
+    int brightness = (state->color & COLOR_MASK) ? 1 : 0;
 
-    err = set_cur_button_brightness(on ? 1 : 0);
-
+#ifdef VAR_BUTTON_BRIGHTNESS
+    brightness = rgb_to_brightness(state);
+#endif
+    err = set_cur_button_brightness(brightness);
     pthread_mutex_unlock(&g_lock);
 
     return err;
@@ -183,7 +196,7 @@ static int write_leds(const struct led_config *led)
         return -EINVAL;
     }
 
-    ALOGV("%s: color=0x%08x, delay_on=%d, delay_off=%d, blink=\"%s\".",
+    ALOGV("%s: color=0x%08x, delay_on=%d, delay_off=%d, blink=%s",
           __func__, led->color, led->delay_on, led->delay_off, blink);
 
     /* Add '\n' here to make the above log message clean. */
@@ -197,10 +210,20 @@ static int write_leds(const struct led_config *led)
     return err;
 }
 
+static int calibrate_color(int color, int brightness)
+{
+    int red = ((color >> 16) & 0xFF) * LED_ADJUSTMENT_R;
+    int green = ((color >> 8) & 0xFF) * LED_ADJUSTMENT_G;
+    int blue = (color & 0xFF) * LED_ADJUSTMENT_B;
+
+    return (((red * brightness) / 255) << 16) + (((green * brightness) / 255) << 8) + ((blue * brightness) / 255);
+}
+
 static int set_light_leds(struct light_state_t const *state, int type)
 {
     struct led_config *led;
     int err = 0;
+    int adjusted_brightness;
 
     ALOGV("%s: type=%d, color=0x%010x, fM=%d, fOnMS=%d, fOffMs=%d.", __func__,
           type, state->color,state->flashMode, state->flashOnMS, state->flashOffMS);
@@ -230,7 +253,23 @@ static int set_light_leds(struct light_state_t const *state, int type)
         return -EINVAL;
     }
 
-    led->color = state->color & COLOR_MASK;
+    switch (type) {
+    case TYPE_BATTERY:
+        adjusted_brightness = LED_BRIGHTNESS_BATTERY;
+        break;
+    case TYPE_NOTIFICATION:
+        adjusted_brightness = LED_BRIGHTNESS_NOTIFICATION;
+        break;
+    case TYPE_ATTENTION:
+        adjusted_brightness = LED_BRIGHTNESS_ATTENTION;
+        break;
+    default:
+        adjusted_brightness = 255;
+    }
+
+
+
+    led->color = calibrate_color(state->color & COLOR_MASK, adjusted_brightness);
 
     if (led->color > 0) {
         /* This LED is lit. */
@@ -263,16 +302,29 @@ switched:
     return err;
 }
 
+#ifdef LED_BLN_NODE
+static int set_light_bln_notifications(struct light_device_t *dev __unused,
+                                  struct light_state_t const *state)
+{
+    int err = 0;
+
+    pthread_mutex_lock(&g_lock);
+    err = write_str(LED_BLN_NODE, state->color & COLOR_MASK ? "1" : "0");
+    pthread_mutex_unlock(&g_lock);
+
+    return err;
+}
+#endif
 static int set_light_leds_battery(struct light_device_t *dev __unused,
                                   struct light_state_t const *state)
 {
-    return set_light_leds(state, 0);
+    return set_light_leds(state, TYPE_BATTERY);
 }
 
 static int set_light_leds_notifications(struct light_device_t *dev __unused,
                                         struct light_state_t const *state)
 {
-    return set_light_leds(state, 1);
+    return set_light_leds(state, TYPE_NOTIFICATION);
 }
 
 static int set_light_leds_attention(struct light_device_t *dev __unused,
@@ -298,7 +350,7 @@ static int set_light_leds_attention(struct light_device_t *dev __unused,
         break;
     }
 
-    return set_light_leds(&fixed, 2);
+    return set_light_leds(&fixed, TYPE_ATTENTION);
 }
 
 static int open_lights(const struct hw_module_t *module, char const *name,
@@ -322,6 +374,12 @@ static int open_lights(const struct hw_module_t *module, char const *name,
     } else if (0 == strcmp(LIGHT_ID_NOTIFICATIONS, name)) {
         requested_component = COMPONENT_LED;
         set_light = set_light_leds_notifications;
+#ifdef LED_BLN_NODE
+        if (hw_components & COMPONENT_BLN) {
+            requested_component = COMPONENT_BLN;
+            set_light = set_light_bln_notifications;
+        }
+#endif
     } else if (0 == strcmp(LIGHT_ID_ATTENTION, name)) {
         requested_component = COMPONENT_LED;
         set_light = set_light_leds_attention;

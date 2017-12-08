@@ -75,13 +75,12 @@ int Connect_RILD(HRilClient client);
  */
 int Connect_QRILD(HRilClient client);
 
-#if defined(SEC_PRODUCT_FEATURE_RIL_CALL_DUALMODE_CDMAGSM)
 /**
  * Connect to RIL deamon. One client task starts.
  * Return is 0 or error code.
  */
 int Connect_RILD_Second(HRilClient client);
-#endif
+
 /**
  * check whether RILD is connected
  * Returns 0 or 1
@@ -138,7 +137,8 @@ typedef enum _SoundType {
  * External sound device path.
  */
 typedef enum _AudioPath {
-    SOUND_AUDIO_PATH_HANDSET,
+    SOUND_AUDIO_PATH_EARPIECE,
+    SOUND_AUDIO_PATH_HANDSET = SOUND_AUDIO_PATH_EARPIECE,
     SOUND_AUDIO_PATH_HEADSET,
     SOUND_AUDIO_PATH_SPEAKER,
     SOUND_AUDIO_PATH_BLUETOOTH,
